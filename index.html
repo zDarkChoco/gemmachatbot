@@ -160,7 +160,6 @@
     <script>
         // --- Models configuration ---
         const MAIN_MODEL = 'google/gemma-4-26b-a4b-it';
-        const FAST_MEMORY_MODEL = 'google/gemma-3-4b-it'; 
         const DEEP_MEMORY_MODEL = 'google/gemma-4-26b-a4b-it';
 
         // --- State Management ---
@@ -365,33 +364,77 @@
 
         async function performSearch(query) {
             try {
-                // Primary: Scrape real web results via DuckDuckGo and AllOrigins proxy for modern info
+                // Phase 1: Scrape DuckDuckGo for Top 3 Results (Title, Snippet, URL)
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://html.duckduckgo.com/html/?q=' + query)}`;
                 const res = await fetch(proxyUrl);
                 const data = await res.json();
                 
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(data.contents, 'text/html');
-                const snippets = Array.from(doc.querySelectorAll('.result__snippet')).slice(0, 4).map(el => "- " + el.textContent.trim());
+                const resultNodes = Array.from(doc.querySelectorAll('.result')).slice(0, 3);
                 
-                if (snippets.length > 0) {
-                    return `Live Web Search Results for "${query}":\n${snippets.join('\n')}`;
+                if (resultNodes.length === 0) throw new Error("No results found.");
+
+                let snippetsText = resultNodes.map(el => {
+                    const title = el.querySelector('.result__title')?.textContent.trim() || 'Unknown Title';
+                    const snippet = el.querySelector('.result__snippet')?.textContent.trim() || '';
+                    
+                    const urlObj = el.querySelector('.result__url');
+                    let url = urlObj ? (urlObj.getAttribute('href') || '') : '';
+                    // Clean up DuckDuckGo redirect wrappers
+                    if(url.startsWith('//duckduckgo.com/l/?uddg=')) {
+                        try { url = decodeURIComponent(url.split('uddg=')[1].split('&')[0]); } catch(e){}
+                    }
+                    return `- [${title}](${url}): ${snippet}`;
+                }).join('\n');
+
+                // Phase 2: Deep Fetching - Scrape the actual website of the #1 result
+                let deepContext = "";
+                const firstUrlNode = resultNodes[0].querySelector('.result__url');
+                if (firstUrlNode) {
+                    let firstUrl = firstUrlNode.getAttribute('href');
+                    if(firstUrl.startsWith('//duckduckgo.com/l/?uddg=')) {
+                         try { firstUrl = decodeURIComponent(firstUrl.split('uddg=')[1].split('&')[0]); } catch(e){}
+                    }
+                    
+                    if (firstUrl && firstUrl.startsWith('http')) {
+                        try {
+                            const articleRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(firstUrl)}`);
+                            const articleData = await articleRes.json();
+                            const articleDoc = parser.parseFromString(articleData.contents, 'text/html');
+                            
+                            // Extract all paragraphs to get the meat of the article
+                            const paragraphs = Array.from(articleDoc.querySelectorAll('p'))
+                                                .map(p => p.textContent.trim())
+                                                .filter(text => text.length > 50) // Ignore tiny fragments
+                                                .join('\n\n');
+                                                
+                            if (paragraphs.length > 0) {
+                                // Provide up to 2500 characters of deep reading
+                                deepContext = `\n\n--- Deep Read of Top Result (${firstUrl}) ---\n${paragraphs.substring(0, 2500)}...`;
+                            }
+                        } catch (e) {
+                            console.warn("Deep read failed, relying on snippets.", e);
+                        }
+                    }
                 }
+
+                return `Live Web Search Results for "${query}":\n\n${snippetsText}${deepContext}`;
+                
             } catch (e) {
                 console.warn("Live web search failed, falling back to Wikipedia", e);
-            }
-
-            try {
-                // Fallback: Wikipedia API
-                const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`);
-                const data = await res.json();
-                if (data.query && data.query.search.length > 0) {
-                    const snippets = data.query.search.slice(0, 3).map(s => `- ${s.title}: ${s.snippet.replace(/<[^>]*>?/gm, '')}`).join('\n\n');
-                    return `Wikipedia Search Results for "${query}":\n${snippets}`;
+                try {
+                    // Fallback: Wikipedia API
+                    const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`);
+                    const data = await res.json();
+                    if (data.query && data.query.search.length > 0) {
+                        const snippets = data.query.search.slice(0, 3).map(s => `- ${s.title}: ${s.snippet.replace(/<[^>]*>?/gm, '')}`).join('\n\n');
+                        return `Wikipedia Search Results for "${query}":\n${snippets}`;
+                    }
+                    return `Search Results for "${query}": No results found.`;
+                } catch(fallbackErr) {
+                    return `Search Results for "${query}": Search completely failed.`;
                 }
-                return `Search Results for "${query}": No results found on Web or Wikipedia.`;
-            } catch(e) {
-                return `Search Results for "${query}": Search completely failed.`;
             }
         }
 
@@ -442,7 +485,7 @@
                 sysPrompt += `\n\nUser Context/Memory:\n- ${memoryBank.join('\n- ')}`;
             }
             
-            sysPrompt += `\n\nTOOL INSTRUCTION: You have a Web Search tool. Today's date is ${today}. If asked about recent events, real-time data, unreleased tech (e.g. Pixel 10), or things you are unsure of, you MUST use the tool by outputting EXACTLY <search>your specific query</search> and waiting for results. DO NOT use search for math, coding, or general knowledge you already possess.`;
+            sysPrompt += `\n\nTOOL INSTRUCTION: You have a Web Search tool. Today's date is ${today}. If asked about recent events, real-time data, unreleased tech (e.g. Pixel 10), or things you are unsure of, you MUST use the tool by outputting EXACTLY <search>your specific query</search> and waiting for results. DO NOT use search for math, coding, or general knowledge you already possess.\n\nMEMORY INSTRUCTION: You must extract any enduring personal facts from the user's message. At the very end of your response, output the extracted fact inside <memory> tags. Example: <memory>The user's name is Kozo.</memory>. If there are no new personal facts, output <memory>NONE</memory>.`;
 
             const apiMessages = [];
             if (sysPrompt) {
@@ -488,11 +531,16 @@
                     if (part?.text) {
                         fullText += part.text;
                         
+                        let displayContent = fullText;
+                        
+                        // Hide memory tags from UI while streaming
+                        displayContent = displayContent.replace(/<memory>[\s\S]*?(?:<\/memory>|$)/gi, '');
+                        
                         // Obfuscate the search command visually for the user
-                        if (fullText.includes('<search>')) {
+                        if (displayContent.includes('<search>')) {
                             contentDiv.innerHTML = `<span class="text-blue-400 flex items-center gap-2"><i class="ph ph-magnifying-glass animate-pulse"></i> Searching the live web...</span>`;
                         } else {
-                            contentDiv.innerHTML = marked.parse(fullText);
+                            contentDiv.innerHTML = marked.parse(displayContent.trim());
                         }
                     }
                     scrollToBottom();
@@ -503,7 +551,7 @@
 
                 if (searchMatch) {
                     const query = searchMatch[1].trim();
-                    aiMsg.content = `*Used Web Search for: "${query}"*`; // Leave a breadcrumb in the chat log
+                    aiMsg.content = `*Deep Web Search executed for: "${query}"*`; // Leave a breadcrumb in the chat log
                     saveChats();
                     
                     const searchResults = await performSearch(query);
@@ -512,16 +560,19 @@
                     await sendMessage(true, searchResults);
                     return; 
                 } else {
+                    // Extract Memory directly from the main model's response
+                    const memoryMatch = fullText.match(/<memory>([\s\S]*?)<\/memory>/i);
+                    if (memoryMatch) {
+                        const extractedMem = memoryMatch[1].replace(/^["*`]|["*`]$/g, '').trim();
+                        if (extractedMem.toUpperCase() !== "NONE" && extractedMem.length > 4) {
+                            handleNewMemory(extractedMem);
+                        }
+                        // Strip memory tags from the final saved content so it doesn't show in chat history
+                        fullText = fullText.replace(/<memory>[\s\S]*?<\/memory>/gi, '').trim();
+                    }
+
                     aiMsg.content = fullText;
                     saveChats();
-
-                    // Memory Process: get the last actual user input, skip the search result injections
-                    if (!isAgentContinuation) {
-                        const originalUserMsg = chat.messages.slice().reverse().find(m => m.role === 'user' && !m.isSearchResult);
-                        if (originalUserMsg && originalUserMsg.content) {
-                            processMemory(originalUserMsg.content, aiMsg.content);
-                        }
-                    }
                 }
 
             } catch (error) {
@@ -542,55 +593,29 @@
         }
 
         // --- Memory System ---
-        async function processMemory(userText, aiText) {
-            if (!userText || userText.length < 2) return; 
-            
+        async function handleNewMemory(extractedText) {
             try {
-                const prompt = `You are a strict data extraction tool. Analyze the user message and extract ONLY enduring personal facts (name, age, location, preferences, rules, etc.) as a single concise sentence. DO NOT extract questions, inquiries, or current actions. If there are NO enduring personal facts, output EXACTLY the word "NONE".
-
-Example 1:
-User message: "My name is Kozo and I like apples."
-Extraction: The user's name is Kozo and they like apples.
-
-Example 2:
-User message: "What is the capital of France?"
-Extraction: NONE
-
-Example 3:
-User message: "How many days until my birthday?"
-Extraction: NONE
-
-Example 4:
-User message: "${userText}"
-Extraction:`;
+                memoryBank.push(extractedText);
+                if (puter.auth.isSignedIn()) puter.kv.set('gemma_memory_bank', JSON.stringify(memoryBank));
                 
-                const extRes = await puter.ai.chat(prompt, { model: FAST_MEMORY_MODEL });
-                let extracted = typeof extRes === 'string' ? extRes : (extRes?.text || extRes?.message?.content || "NONE");
-                
-                extracted = extracted.replace(/^["*`]|["*`]$/g, '').trim();
-                const isNone = extracted.toUpperCase() === "NONE" || extracted.toUpperCase().includes("NONE");
-
-                if (!isNone && extracted.length > 4) {
-                    memoryBank.push(extracted);
-                    if (puter.auth.isSignedIn()) puter.kv.set('gemma_memory_bank', JSON.stringify(memoryBank));
+                // Deep Memory Condensation (Gemma 4 26B)
+                if (memoryBank.length >= 5) {
+                    const condensePrompt = `Condense these facts about the user into 1-2 concise, factual sentences for long-term memory tracking:\n${memoryBank.join('\n')}`;
+                    const condRes = await puter.ai.chat(condensePrompt, { model: DEEP_MEMORY_MODEL });
+                    let condensed = typeof condRes === 'string' ? condRes : (condRes?.text || condRes?.message?.content);
                     
-                    if (memoryBank.length >= 5) {
-                        const condensePrompt = `Condense these facts about the user into 1-2 concise, factual sentences for long-term memory tracking:\n${memoryBank.join('\n')}`;
-                        const condRes = await puter.ai.chat(condensePrompt, { model: DEEP_MEMORY_MODEL });
-                        let condensed = typeof condRes === 'string' ? condRes : (condRes?.text || condRes?.message?.content);
-                        
-                        if (condensed) {
-                            memoryBank = [condensed.trim()]; 
-                            if (puter.auth.isSignedIn()) puter.kv.set('gemma_memory_bank', JSON.stringify(memoryBank));
-                        }
-                    }
-
-                    if (!document.getElementById('memoryModal').classList.contains('hidden')) {
-                        renderMemory();
+                    if (condensed) {
+                        memoryBank = [condensed.trim()]; 
+                        if (puter.auth.isSignedIn()) puter.kv.set('gemma_memory_bank', JSON.stringify(memoryBank));
                     }
                 }
+
+                // Auto-refresh UI if the modal happens to be open
+                if (!document.getElementById('memoryModal').classList.contains('hidden')) {
+                    renderMemory();
+                }
             } catch(e) {
-                console.error("Memory extraction failed:", e);
+                console.error("Memory condensation failed:", e);
             }
         }
 
