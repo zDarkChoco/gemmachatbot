@@ -18,8 +18,6 @@
             }
         }
     </script>
-    <!-- Puter.js -->
-    <script src="https://js.puter.com/v2/"></script>
     <!-- Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Phosphor Icons -->
@@ -64,17 +62,17 @@
         </div>
 
         <div class="p-3 border-t border-gray-800 space-y-2">
-            <button onclick="openModal('customInstructionsModal')" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors">
+            <button onclick="window.openModal('customInstructionsModal')" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors">
                 <i class="ph ph-sliders text-lg"></i> Custom Instructions
             </button>
-            <button onclick="openModal('memoryModal')" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors">
+            <button onclick="window.openModal('memoryModal')" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors">
                 <i class="ph ph-brain text-lg"></i> View Memory Bank
             </button>
         </div>
 
         <div class="p-3 border-t border-gray-800" id="authSection">
-            <button onclick="puter.auth.signIn().then(checkAuth)" class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors" id="authBtn">
-                <i class="ph ph-user text-lg"></i> Sign in with Puter
+            <button onclick="window.handleAuth()" class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors" id="authBtn">
+                <i class="ph ph-google-logo text-lg"></i> Sign in with Google
             </button>
         </div>
     </aside>
@@ -84,7 +82,7 @@
         <!-- Header -->
         <header class="h-14 border-b border-gray-800 flex items-center px-4 justify-between bg-gray-900/80 backdrop-blur-sm z-10">
             <div class="flex items-center gap-3">
-                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
+                <button onclick="window.toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
                     <i class="ph ph-list text-2xl"></i>
                 </button>
                 <h2 id="currentChatTitle" class="font-medium text-gray-200">New Chat</h2>
@@ -105,14 +103,14 @@
                 
                 <div class="flex items-end gap-2 bg-gray-800 border border-gray-700 rounded-2xl p-2 focus-within:border-gray-500 transition-colors">
                     
-                    <input type="file" id="fileInput" class="hidden" multiple onchange="handleFileSelect(event)" accept="image/*,.txt,.json,.md,.csv">
+                    <input type="file" id="fileInput" class="hidden" multiple onchange="window.handleFileSelect(event)" accept="image/*,.txt,.json,.md,.csv">
                     <button onclick="document.getElementById('fileInput').click()" class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-gray-700 transition-colors shrink-0" title="Attach File">
                         <i class="ph ph-paperclip text-xl"></i>
                     </button>
                     
-                    <textarea id="messageInput" rows="1" class="w-full bg-transparent border-none focus:ring-0 text-gray-100 placeholder-gray-500 resize-none py-2 max-h-32 min-h-[40px] scrollbar-hide" placeholder="Message Gemma..." onkeydown="handleKeydown(event)"></textarea>
+                    <textarea id="messageInput" rows="1" class="w-full bg-transparent border-none focus:ring-0 text-gray-100 placeholder-gray-500 resize-none py-2 max-h-32 min-h-[40px] scrollbar-hide" placeholder="Message Gemma..." onkeydown="window.handleKeydown(event)"></textarea>
                     
-                    <button id="sendBtn" onclick="sendMessage()" class="p-2 bg-white text-black hover:bg-gray-200 rounded-xl transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <button id="sendBtn" onclick="window.sendMessage()" class="p-2 bg-white text-black hover:bg-gray-200 rounded-xl transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="ph ph-paper-plane-right text-xl"></i>
                     </button>
                 </div>
@@ -126,13 +124,13 @@
         <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg mx-4 p-6 shadow-2xl">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold">Custom Instructions</h3>
-                <button onclick="closeModal('customInstructionsModal')" class="text-gray-400 hover:text-white"><i class="ph ph-x text-xl"></i></button>
+                <button onclick="window.closeModal('customInstructionsModal')" class="text-gray-400 hover:text-white"><i class="ph ph-x text-xl"></i></button>
             </div>
             <p class="text-sm text-gray-400 mb-4">These instructions will be applied as the system prompt for all new chats.</p>
             <textarea id="customInstructionsInput" class="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 resize-none" placeholder="E.g. Always answer concisely and use bullet points..."></textarea>
             <div class="mt-4 flex justify-end gap-2">
-                <button onclick="closeModal('customInstructionsModal')" class="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-800">Cancel</button>
-                <button onclick="saveCustomInstructions()" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">Save</button>
+                <button onclick="window.closeModal('customInstructionsModal')" class="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-800">Cancel</button>
+                <button onclick="window.saveCustomInstructions()" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">Save</button>
             </div>
         </div>
     </div>
@@ -145,22 +143,46 @@
                     <h3 class="text-lg font-semibold">Memory Bank</h3>
                     <p class="text-xs text-gray-400">Summarized using Gemma 3 4B, condensed by Gemma 4 26B.</p>
                 </div>
-                <button onclick="closeModal('memoryModal')" class="text-gray-400 hover:text-white"><i class="ph ph-x text-xl"></i></button>
+                <button onclick="window.closeModal('memoryModal')" class="text-gray-400 hover:text-white"><i class="ph ph-x text-xl"></i></button>
             </div>
             <div id="memoryContainer" class="flex-1 overflow-y-auto space-y-3 bg-gray-950 rounded-lg p-4 border border-gray-800">
                 <!-- Memory items populated here -->
             </div>
             <div class="mt-4 flex justify-between items-center">
-                <button onclick="clearMemory()" class="px-3 py-1.5 rounded text-sm text-red-400 hover:bg-red-400/10 transition-colors">Clear Memory</button>
-                <button onclick="closeModal('memoryModal')" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white">Close</button>
+                <button onclick="window.clearMemory()" class="px-3 py-1.5 rounded text-sm text-red-400 hover:bg-red-400/10 transition-colors">Clear Memory</button>
+                <button onclick="window.closeModal('memoryModal')" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white">Close</button>
             </div>
         </div>
     </div>
 
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // --- Firebase Config ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYdmpvwai-irQMP7Ovv_RhyYlZar9W_PI",
+            authDomain: "gemma-chatbot-bdb53.firebaseapp.com",
+            projectId: "gemma-chatbot-bdb53",
+            storageBucket: "gemma-chatbot-bdb53.firebasestorage.app",
+            messagingSenderId: "244668713622",
+            appId: "1:244668713622:web:a06e5b6993f7794bc710b7",
+            measurementId: "G-2XQMHRS71T"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+        
+        let currentUser = null;
+        const APP_ID = 'gemma-chat-v1';
+
         // --- Models configuration ---
-        const MAIN_MODEL = 'google/gemma-4-26b-a4b-it';
-        const DEEP_MEMORY_MODEL = 'google/gemma-4-26b-a4b-it';
+        const MAIN_MODEL = 'google/gemma-4-31B-it';
+        const FAST_MEMORY_MODEL = 'google/gemma-4-E4B-it';
+        const DEEP_MEMORY_MODEL = 'google/gemma-4-31B-it';
 
         // --- State Management ---
         let chats = [];
@@ -169,12 +191,53 @@
         let memoryBank = [];
         let attachments = []; 
         let isProcessing = false;
+        
+        // Hardcoded Token
+        const hfToken = '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';
+
+        // Expose functions to window for inline HTML onclick handlers
+        window.toggleSidebar = toggleSidebar;
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.saveCustomInstructions = saveCustomInstructions;
+        window.handleKeydown = handleKeydown;
+        window.createNewChat = createNewChat;
+        window.loadChat = loadChat;
+        window.deleteChat = deleteChat;
+        window.handleFileSelect = handleFileSelect;
+        window.removeAttachment = removeAttachment;
+        window.sendMessage = sendMessage;
+        window.clearMemory = clearMemory;
+        window.handleAuth = handleAuth;
 
         // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
-            checkAuth();
+            onAuthStateChanged(auth, async (user) => {
+                currentUser = user;
+                const authBtn = document.getElementById('authBtn');
+                const messageInput = document.getElementById('messageInput');
+                const sendBtn = document.getElementById('sendBtn');
+
+                if (user) {
+                    const displayName = user.displayName ? user.displayName.split(' ')[0] : 'User';
+                    authBtn.innerHTML = `<i class="ph ph-sign-out text-lg"></i> Sign out (${displayName})`;
+                    messageInput.disabled = false;
+                    sendBtn.disabled = false;
+                    messageInput.placeholder = "Message Gemma...";
+                    await loadCloudData();
+                } else {
+                    authBtn.innerHTML = `<i class="ph ph-google-logo text-lg"></i> Sign in with Google`;
+                    messageInput.disabled = true;
+                    sendBtn.disabled = true;
+                    messageInput.placeholder = "Please sign in to chat...";
+                    chats = [];
+                    memoryBank = [];
+                    currentChatId = null;
+                    renderChatList();
+                    renderMessages();
+                }
+            });
             
-            // Adjust textarea height automatically
             const tx = document.getElementById('messageInput');
             tx.addEventListener("input", function() {
                 this.style.height = 'auto';
@@ -183,48 +246,40 @@
         });
 
         // --- Auth Management ---
-        async function checkAuth() {
-            const isSignedIn = puter.auth.isSignedIn();
-            const authBtn = document.getElementById('authBtn');
-            const messageInput = document.getElementById('messageInput');
-            const sendBtn = document.getElementById('sendBtn');
-
-            if (isSignedIn) {
-                const user = await puter.auth.getUser();
-                authBtn.innerHTML = `<i class="ph ph-sign-out text-lg"></i> Sign out (${user.username})`;
-                authBtn.onclick = async () => { await puter.auth.signOut(); checkAuth(); };
-                messageInput.disabled = false;
-                sendBtn.disabled = false;
-                messageInput.placeholder = "Message Gemma...";
-                
-                await loadCloudData();
+        async function handleAuth() {
+            if (currentUser) {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Sign-out Error:", error);
+                }
             } else {
-                authBtn.innerHTML = `<i class="ph ph-sign-in text-lg"></i> Sign in with Puter`;
-                authBtn.onclick = async () => { await puter.auth.signIn(); checkAuth(); };
-                messageInput.disabled = true;
-                sendBtn.disabled = true;
-                messageInput.placeholder = "Please sign in to chat...";
-                
-                // Clear state when signed out
-                chats = [];
-                memoryBank = [];
-                currentChatId = null;
-                renderChatList();
-                renderMessages();
+                try {
+                    await signInWithPopup(auth, googleProvider);
+                } catch (error) {
+                    console.error("Google Sign-In Error:", error);
+                    if (error.code === 'auth/unauthorized-domain') {
+                        alert(`Domain not authorized. Add "${window.location.hostname}" to Firebase Console -> Authentication -> Settings -> Authorized domains.`);
+                    } else {
+                        alert(`Sign-in failed: ${error.message}`);
+                    }
+                }
             }
         }
 
         async function loadCloudData() {
+            if (!currentUser) return;
             try {
-                const cloudInst = await puter.kv.get('gemma_custom_instructions');
-                customInstructions = cloudInst || '';
-                document.getElementById('customInstructionsInput').value = customInstructions;
-
-                const cloudMem = await puter.kv.get('gemma_memory_bank');
-                memoryBank = cloudMem ? JSON.parse(cloudMem) : [];
-
-                const cloudChats = await puter.kv.get('gemma_chats');
-                chats = cloudChats ? JSON.parse(cloudChats) : [];
+                const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'appData', 'state');
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    customInstructions = data.customInstructions || '';
+                    document.getElementById('customInstructionsInput').value = customInstructions;
+                    memoryBank = data.memoryBank || [];
+                    chats = data.chats || [];
+                }
 
                 if (chats.length === 0) {
                     createNewChat();
@@ -235,6 +290,20 @@
                 }
             } catch (e) {
                 console.error("Failed to load cloud data", e);
+            }
+        }
+
+        async function saveCloudData() {
+            if (!currentUser) return;
+            try {
+                const docRef = doc(db, 'artifacts', APP_ID, 'users', currentUser.uid, 'appData', 'state');
+                await setDoc(docRef, {
+                    customInstructions: customInstructions,
+                    memoryBank: memoryBank,
+                    chats: chats
+                }, { merge: true });
+            } catch (e) {
+                console.error("Failed to save cloud data", e);
             }
         }
 
@@ -251,7 +320,7 @@
 
         function saveCustomInstructions() {
             customInstructions = document.getElementById('customInstructionsInput').value;
-            if (puter.auth.isSignedIn()) puter.kv.set('gemma_custom_instructions', customInstructions);
+            saveCloudData();
             closeModal('customInstructionsModal');
         }
 
@@ -272,7 +341,7 @@
             };
             chats.unshift(newChat);
             currentChatId = newChat.id;
-            saveChats();
+            saveCloudData();
             renderChatList();
             renderMessages();
             if(window.innerWidth < 768) toggleSidebar();
@@ -293,15 +362,9 @@
             if (currentChatId === id) {
                 currentChatId = chats.length > 0 ? chats[0].id : null;
             }
-            saveChats();
+            saveCloudData();
             if (!currentChatId) createNewChat();
             else { renderChatList(); renderMessages(); }
-        }
-
-        function saveChats() {
-            if (puter.auth.isSignedIn()) {
-                puter.kv.set('gemma_chats', JSON.stringify(chats));
-            }
         }
 
         function getActiveChat() {
@@ -364,14 +427,12 @@
 
         async function performSearch(query) {
             try {
-                // Phase 1: Scrape DuckDuckGo for Top 5 Results (Title, Snippet, URL)
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://html.duckduckgo.com/html/?q=' + query)}`;
                 const res = await fetch(proxyUrl);
                 const data = await res.json();
                 
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(data.contents, 'text/html');
-                // Increased to 5 results for better context if deep fetch fails
                 const resultNodes = Array.from(doc.querySelectorAll('.result')).slice(0, 5);
                 
                 if (resultNodes.length === 0) throw new Error("No results found.");
@@ -382,14 +443,12 @@
                     
                     const urlObj = el.querySelector('.result__url');
                     let url = urlObj ? (urlObj.getAttribute('href') || '') : '';
-                    // Clean up DuckDuckGo redirect wrappers
                     if(url.startsWith('//duckduckgo.com/l/?uddg=')) {
                         try { url = decodeURIComponent(url.split('uddg=')[1].split('&')[0]); } catch(e){}
                     }
                     return `- [${title}](${url}): ${snippet}`;
                 }).join('\n');
 
-                // Phase 2: Deep Fetching with strict 3-second timeout
                 let deepContext = "";
                 const firstUrlNode = resultNodes[0].querySelector('.result__url');
                 if (firstUrlNode) {
@@ -401,7 +460,7 @@
                     if (firstUrl && firstUrl.startsWith('http')) {
                         try {
                             const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 sec timeout
+                            const timeoutId = setTimeout(() => controller.abort(), 3000);
                             
                             const articleRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(firstUrl)}`, { signal: controller.signal });
                             clearTimeout(timeoutId);
@@ -409,14 +468,12 @@
                             const articleData = await articleRes.json();
                             const articleDoc = parser.parseFromString(articleData.contents, 'text/html');
                             
-                            // Extract all paragraphs to get the meat of the article
                             const paragraphs = Array.from(articleDoc.querySelectorAll('p'))
                                                 .map(p => p.textContent.trim())
-                                                .filter(text => text.length > 50) // Ignore tiny fragments
+                                                .filter(text => text.length > 50)
                                                 .join('\n\n');
                                                 
                             if (paragraphs.length > 0) {
-                                // Provide up to 2500 characters of deep reading
                                 deepContext = `\n\n--- Deep Read of Top Result (${firstUrl}) ---\n${paragraphs.substring(0, 2500)}...`;
                             }
                         } catch (e) {
@@ -430,7 +487,6 @@
             } catch (e) {
                 console.warn("Live web search failed, falling back to Wikipedia", e);
                 try {
-                    // Fallback: Wikipedia API
                     const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`);
                     const data = await res.json();
                     if (data.query && data.query.search.length > 0) {
@@ -442,6 +498,32 @@
                     return `Search Results for "${query}": Search completely failed.`;
                 }
             }
+        }
+
+        // --- Hugging Face API Call ---
+        async function callHuggingFace(messages, model) {
+            const url = `https://api-inference.huggingface.co/models/${model}/v1/chat/completions`;
+            const response = await fetch(url, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${hfToken}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    max_tokens: 1024,
+                    stream: false
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.text();
+                throw new Error(`HF Error (${response.status}): ${err}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
         }
 
         // --- Core Logic ---
@@ -472,26 +554,24 @@
                 inputEl.style.height = 'auto';
                 attachments = [];
                 renderAttachments();
-                saveChats();
+                saveCloudData();
                 
                 isProcessing = true;
                 document.getElementById('sendBtn').disabled = true;
             } else if (searchResultText) {
-                // Agent loop: push the search results quietly as a system/user message
                 chat.messages.push({ role: 'user', content: searchResultText, isSearchResult: true });
-                saveChats();
+                saveCloudData();
             }
 
             renderMessages();
 
-            // System Prompt construction
             const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             let sysPrompt = customInstructions;
             if (memoryBank.length > 0) {
                 sysPrompt += `\n\nUser Context/Memory:\n- ${memoryBank.join('\n- ')}`;
             }
             
-            sysPrompt += `\n\nTOOL INSTRUCTION: You have a Web Search tool. Today's date is ${today}. If asked about recent events, real-time data, unreleased tech (e.g. Pixel 10), or things you are unsure of, you MUST use the tool by outputting EXACTLY <search>your specific query</search> and waiting for results. DO NOT use search for math, coding, or general knowledge you already possess.\n\nMEMORY INSTRUCTION: You must extract any enduring personal facts from the user's message. At the very end of your response, output the extracted fact inside <memory> tags. Example: <memory>The user's name is Kozo.</memory>. If there are no new personal facts, output <memory>NONE</memory>.`;
+            sysPrompt += `\n\nTOOL INSTRUCTION: You have a Web Search tool. Today's date is ${today}. If asked about recent events, real-time data, unreleased tech (e.g. Pixel 10), or things you are unsure of, you MUST use the tool by outputting EXACTLY <search>your specific query</search> and waiting for results. DO NOT use search for math, coding, or general knowledge you already possess.`;
 
             const apiMessages = [];
             if (sysPrompt) {
@@ -500,27 +580,27 @@
 
             chat.messages.forEach(m => {
                 if (m.role === 'user') {
-                    const contentArr = [];
-                    if (m.content) contentArr.push({ type: 'text', text: m.content });
-                    
+                    // Flattening files to text because HF free tier usually drops image data payloads
+                    let combinedText = m.content || "";
                     if (m.files && m.files.length > 0) {
                         m.files.forEach(f => {
-                            if (f.type === 'image') {
-                                contentArr.push({ type: 'image_url', image_url: { url: f.data } });
+                            if (f.type !== 'image') {
+                                combinedText += `\n[Attached File: ${f.name}]\n${f.data}\n`;
                             } else {
-                                contentArr.push({ type: 'text', text: `\n[Attached File: ${f.name}]\n${f.data}\n` });
+                                combinedText += `\n[User attached an image, but this model cannot process images via this endpoint.]\n`;
                             }
                         });
                     }
-                    apiMessages.push({ role: 'user', content: contentArr });
+                    apiMessages.push({ role: 'user', content: combinedText });
                 } else {
                     apiMessages.push({ role: 'assistant', content: m.content });
                 }
             });
 
-            // Create temporary AI message wrapper for streaming UI
             const aiMsg = { role: 'assistant', content: '' };
             chat.messages.push(aiMsg);
+            
+            aiMsg.content = `<span class="text-gray-400 flex items-center gap-2"><i class="ph ph-spinner animate-spin"></i> Waiting for Hugging Face...</span>`;
             renderMessages(); 
             
             const messageElements = document.querySelectorAll('.message-bubble');
@@ -530,65 +610,45 @@
             let searchMatch = null;
 
             try {
-                const response = await puter.ai.chat(apiMessages, { model: MAIN_MODEL, stream: true });
-                let fullText = '';
-
-                for await (const part of response) {
-                    if (part?.text) {
-                        fullText += part.text;
-                        
-                        let displayContent = fullText;
-                        
-                        // Hide memory tags from UI while streaming
-                        displayContent = displayContent.replace(/<memory>[\s\S]*?(?:<\/memory>|$)/gi, '');
-                        
-                        // Obfuscate the search command visually for the user
-                        if (displayContent.includes('<search>')) {
-                            contentDiv.innerHTML = `<span class="text-blue-400 flex items-center gap-2"><i class="ph ph-magnifying-glass animate-pulse"></i> Searching the live web...</span>`;
-                        } else {
-                            contentDiv.innerHTML = marked.parse(displayContent.trim());
-                        }
-                    }
-                    scrollToBottom();
-                }
-
-                // Check if the AI used the search tool
+                let fullText = await callHuggingFace(apiMessages, MAIN_MODEL);
+                
                 searchMatch = fullText.match(/<search>(.*?)<\/search>/i);
 
                 if (searchMatch) {
                     const query = searchMatch[1].trim();
-                    aiMsg.content = `*Deep Web Search executed for: "${query}"*`; // Leave a breadcrumb in the chat log
-                    saveChats();
+                    aiMsg.content = `*Deep Web Search executed for: "${query}"*`;
+                    saveCloudData();
+                    
+                    contentDiv.innerHTML = `<span class="text-blue-400 flex items-center gap-2"><i class="ph ph-magnifying-glass animate-pulse"></i> Searching the live web...</span>`;
                     
                     const searchResults = await performSearch(query);
-                    
-                    // Trigger the agent loop recursively to pass results back to Gemma
                     await sendMessage(true, searchResults);
                     return; 
                 } else {
-                    // Extract Memory directly from the main model's response
-                    const memoryMatch = fullText.match(/<memory>([\s\S]*?)<\/memory>/i);
-                    if (memoryMatch) {
-                        const extractedMem = memoryMatch[1].replace(/^["*`]|["*`]$/g, '').trim();
-                        if (extractedMem.toUpperCase() !== "NONE" && extractedMem.length > 4) {
-                            handleNewMemory(extractedMem);
-                        }
-                        // Strip memory tags from the final saved content so it doesn't show in chat history
-                        fullText = fullText.replace(/<memory>[\s\S]*?<\/memory>/gi, '').trim();
-                    }
-
                     aiMsg.content = fullText;
-                    saveChats();
+                    saveCloudData();
+                    contentDiv.innerHTML = marked.parse(fullText);
+
+                    // Memory Process: Trigger background extraction
+                    if (!isAgentContinuation) {
+                        const originalUserMsg = chat.messages.slice().reverse().find(m => m.role === 'user' && !m.isSearchResult);
+                        if (originalUserMsg && originalUserMsg.content) {
+                            processMemory(originalUserMsg.content, aiMsg.content);
+                        }
+                    }
                 }
 
             } catch (error) {
                 console.error(error);
+                let errText = error.message;
+                if (errText.includes('Failed to fetch')) errText = "Network error: Hugging Face server is unresponsive or model is unavailable.";
+                else if (errText.includes('loading')) errText = "Model is currently loading on Hugging Face servers. Please try again in 30 seconds.";
+                
                 if (contentDiv) {
-                    contentDiv.innerHTML = `<span class="text-red-400">Error: Unable to reach Gemma. Check console for details.</span>`;
+                    contentDiv.innerHTML = `<span class="text-red-400">Error: ${errText}</span>`;
                 }
                 chat.messages.pop();
             } finally {
-                // Only unlock UI if we aren't about to loop for a search
                 if (!searchMatch) {
                     isProcessing = false;
                     document.getElementById('sendBtn').disabled = false;
@@ -599,29 +659,58 @@
         }
 
         // --- Memory System ---
-        async function handleNewMemory(extractedText) {
+        async function processMemory(userText, aiText) {
+            if (!userText || userText.length < 2) return; 
+            
             try {
-                memoryBank.push(extractedText);
-                if (puter.auth.isSignedIn()) puter.kv.set('gemma_memory_bank', JSON.stringify(memoryBank));
+                const prompt = `You are a strict data extraction tool. Analyze the user message and extract ONLY enduring personal facts (name, age, location, preferences, rules, etc.) as a single concise sentence. DO NOT extract questions, inquiries, or current actions. If there are NO enduring personal facts, output EXACTLY the word "NONE".
+
+Example 1:
+User message: "My name is Kozo and I like apples."
+Extraction: The user's name is Kozo and they like apples.
+
+Example 2:
+User message: "What is the capital of France?"
+Extraction: NONE
+
+Example 3:
+User message: "How many days until my birthday?"
+Extraction: NONE
+
+Example 4:
+User message: "${userText}"
+Extraction:`;
                 
-                // Deep Memory Condensation (Gemma 4 26B)
-                if (memoryBank.length >= 5) {
-                    const condensePrompt = `Condense these facts about the user into 1-2 concise, factual sentences for long-term memory tracking:\n${memoryBank.join('\n')}`;
-                    const condRes = await puter.ai.chat(condensePrompt, { model: DEEP_MEMORY_MODEL });
-                    let condensed = typeof condRes === 'string' ? condRes : (condRes?.text || condRes?.message?.content);
+                const messages = [{ role: 'user', content: prompt }];
+                let extracted = await callHuggingFace(messages, FAST_MEMORY_MODEL);
+                
+                extracted = extracted.replace(/^["*`]|["*`]$/g, '').trim();
+                const isNone = extracted.toUpperCase() === "NONE" || extracted.toUpperCase().includes("NONE");
+
+                if (!isNone && extracted.length > 4) {
+                    memoryBank.push(extracted);
+                    saveCloudData();
                     
-                    if (condensed) {
-                        memoryBank = [condensed.trim()]; 
-                        if (puter.auth.isSignedIn()) puter.kv.set('gemma_memory_bank', JSON.stringify(memoryBank));
+                    if (memoryBank.length >= 5) {
+                        const condensePrompt = `Condense these facts about the user into 1-2 concise, factual sentences for long-term memory tracking:\n${memoryBank.join('\n')}`;
+                        const condMsgs = [
+                            { role: 'system', content: 'You condense facts strictly.' },
+                            { role: 'user', content: condensePrompt }
+                        ];
+                        let condensed = await callHuggingFace(condMsgs, DEEP_MEMORY_MODEL);
+                        
+                        if (condensed) {
+                            memoryBank = [condensed.trim()]; 
+                            saveCloudData();
+                        }
+                    }
+
+                    if (!document.getElementById('memoryModal').classList.contains('hidden')) {
+                        renderMemory();
                     }
                 }
-
-                // Auto-refresh UI if the modal happens to be open
-                if (!document.getElementById('memoryModal').classList.contains('hidden')) {
-                    renderMemory();
-                }
             } catch(e) {
-                console.error("Memory condensation failed:", e);
+                console.error("Memory extraction background process failed:", e);
             }
         }
 
@@ -642,11 +731,10 @@
 
         function clearMemory() {
             memoryBank = [];
-            if (puter.auth.isSignedIn()) puter.kv.del('gemma_memory_bank');
+            saveCloudData();
             renderMemory();
         }
 
-        // --- Rendering ---
         function renderChatList() {
             const container = document.getElementById('chatList');
             container.innerHTML = '';
@@ -654,7 +742,7 @@
                 const isActive = chat.id === currentChatId;
                 const el = document.createElement('div');
                 el.className = `group flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`;
-                el.onclick = () => loadChat(chat.id);
+                el.onclick = () => window.loadChat(chat.id);
                 
                 const title = document.createElement('span');
                 title.className = 'truncate text-sm flex-1';
@@ -663,7 +751,7 @@
                 const delBtn = document.createElement('button');
                 delBtn.className = `p-1 hover:text-red-400 rounded transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`;
                 delBtn.innerHTML = '<i class="ph ph-trash text-base"></i>';
-                delBtn.onclick = (e) => deleteChat(chat.id, e);
+                delBtn.onclick = (e) => window.deleteChat(chat.id, e);
 
                 el.appendChild(title);
                 el.appendChild(delBtn);
@@ -690,7 +778,6 @@
             document.getElementById('currentChatTitle').innerText = chat.title;
 
             chat.messages.forEach(msg => {
-                // If it's the raw search result data injected back to Gemma, render it as a tiny discrete badge
                 if (msg.isSearchResult) {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'flex justify-center my-2';
@@ -721,7 +808,7 @@
                 if (msg.role === 'assistant') {
                     const contentDiv = document.createElement('div');
                     contentDiv.className = 'markdown-body ai-content';
-                    contentDiv.innerHTML = marked.parse(msg.content);
+                    contentDiv.innerHTML = msg.content === '' ? '' : marked.parse(msg.content);
                     bubble.appendChild(contentDiv);
                 } else {
                     const textDiv = document.createElement('div');
@@ -740,7 +827,6 @@
             const container = document.getElementById('messagesContainer');
             container.scrollTop = container.scrollHeight;
         }
-
     </script>
 </body>
 </html>
