@@ -546,7 +546,7 @@
             if (!userText || userText.length < 2) return; 
             
             try {
-                const prompt = `You are a strict data extraction tool. Analyze the user message and extract any personal facts (name, age, location, preferences, rules, etc.) as a single concise sentence. If there are NO personal facts, output EXACTLY the word "NONE".
+                const prompt = `You are a strict data extraction tool. Analyze the user message and extract ONLY enduring personal facts (name, age, location, preferences, rules, etc.) as a single concise sentence. DO NOT extract questions, inquiries, or current actions. If there are NO enduring personal facts, output EXACTLY the word "NONE".
 
 Example 1:
 User message: "My name is Kozo and I like apples."
@@ -557,6 +557,10 @@ User message: "What is the capital of France?"
 Extraction: NONE
 
 Example 3:
+User message: "How many days until my birthday?"
+Extraction: NONE
+
+Example 4:
 User message: "${userText}"
 Extraction:`;
                 
