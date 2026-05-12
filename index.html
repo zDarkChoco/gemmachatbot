@@ -110,10 +110,6 @@
                         <i class="ph ph-paperclip text-xl"></i>
                     </button>
                     
-                    <button id="searchToggleBtn" onclick="toggleWebSearch()" class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-gray-700 transition-colors shrink-0 relative" title="Web Search (Off)">
-                        <i class="ph ph-globe text-xl" id="searchIcon"></i>
-                    </button>
-                    
                     <textarea id="messageInput" rows="1" class="w-full bg-transparent border-none focus:ring-0 text-gray-100 placeholder-gray-500 resize-none py-2 max-h-32 min-h-[40px] scrollbar-hide" placeholder="Message Gemma..." onkeydown="handleKeydown(event)"></textarea>
                     
                     <button id="sendBtn" onclick="sendMessage()" class="p-2 bg-white text-black hover:bg-gray-200 rounded-xl transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
@@ -168,27 +164,17 @@
         const DEEP_MEMORY_MODEL = 'google/gemma-4-26b-a4b-it';
 
         // --- State Management ---
-        let chats = JSON.parse(localStorage.getItem('gemma_chats')) || [];
+        let chats = [];
         let currentChatId = null;
-        let customInstructions = localStorage.getItem('gemma_custom_instructions') || '';
-        let memoryBank = JSON.parse(localStorage.getItem('gemma_memory_bank')) || [];
-        let isSearchEnabled = false;
+        let customInstructions = '';
+        let memoryBank = [];
         let attachments = []; 
         let isProcessing = false;
 
         // --- Init ---
         document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('customInstructionsInput').value = customInstructions;
             checkAuth();
             
-            if (chats.length === 0) {
-                createNewChat();
-            } else {
-                currentChatId = chats[0].id;
-                renderChatList();
-                renderMessages();
-            }
-
             // Adjust textarea height automatically
             const tx = document.getElementById('messageInput');
             tx.addEventListener("input", function() {
@@ -211,12 +197,45 @@
                 messageInput.disabled = false;
                 sendBtn.disabled = false;
                 messageInput.placeholder = "Message Gemma...";
+                
+                await loadCloudData();
             } else {
                 authBtn.innerHTML = `<i class="ph ph-sign-in text-lg"></i> Sign in with Puter`;
                 authBtn.onclick = async () => { await puter.auth.signIn(); checkAuth(); };
                 messageInput.disabled = true;
                 sendBtn.disabled = true;
                 messageInput.placeholder = "Please sign in to chat...";
+                
+                // Clear state when signed out
+                chats = [];
+                memoryBank = [];
+                currentChatId = null;
+                renderChatList();
+                renderMessages();
+            }
+        }
+
+        async function loadCloudData() {
+            try {
+                const cloudInst = await puter.kv.get('gemma_custom_instructions');
+                customInstructions = cloudInst || '';
+                document.getElementById('customInstructionsInput').value = customInstructions;
+
+                const cloudMem = await puter.kv.get('gemma_memory_bank');
+                memoryBank = cloudMem ? JSON.parse(cloudMem) : [];
+
+                const cloudChats = await puter.kv.get('gemma_chats');
+                chats = cloudChats ? JSON.parse(cloudChats) : [];
+
+                if (chats.length === 0) {
+                    createNewChat();
+                } else {
+                    currentChatId = chats[0].id;
+                    renderChatList();
+                    renderMessages();
+                }
+            } catch (e) {
+                console.error("Failed to load cloud data", e);
             }
         }
 
@@ -231,23 +250,9 @@
         function openModal(id) { document.getElementById(id).classList.remove('hidden'); if(id === 'memoryModal') renderMemory(); }
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-        function toggleWebSearch() {
-            isSearchEnabled = !isSearchEnabled;
-            const btn = document.getElementById('searchToggleBtn');
-            if (isSearchEnabled) {
-                btn.classList.add('text-blue-400', 'bg-blue-900/30');
-                btn.classList.remove('text-gray-400');
-                btn.title = "Web Search (On)";
-            } else {
-                btn.classList.remove('text-blue-400', 'bg-blue-900/30');
-                btn.classList.add('text-gray-400');
-                btn.title = "Web Search (Off)";
-            }
-        }
-
         function saveCustomInstructions() {
             customInstructions = document.getElementById('customInstructionsInput').value;
-            localStorage.setItem('gemma_custom_instructions', customInstructions);
+            if (puter.auth.isSignedIn()) puter.kv.set('gemma_custom_instructions', customInstructions);
             closeModal('customInstructionsModal');
         }
 
@@ -295,7 +300,9 @@
         }
 
         function saveChats() {
-            localStorage.setItem('gemma_chats', JSON.stringify(chats));
+            if (puter.auth.isSignedIn()) {
+                puter.kv.set('gemma_chats', JSON.stringify(chats));
+            }
         }
 
         function getActiveChat() {
@@ -429,13 +436,13 @@
             renderMessages();
 
             // System Prompt construction
+            const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             let sysPrompt = customInstructions;
             if (memoryBank.length > 0) {
                 sysPrompt += `\n\nUser Context/Memory:\n- ${memoryBank.join('\n- ')}`;
             }
-            if (isSearchEnabled) {
-                sysPrompt += `\n\nTOOL INSTRUCTION: You have a Web Search tool. You must use it to answer questions about recent events or unreleased tech. To use it, output exactly <search>query</search>.`;
-            }
+            
+            sysPrompt += `\n\nTOOL INSTRUCTION: You have a Web Search tool. Today's date is ${today}. If asked about recent events, real-time data, unreleased tech (e.g. Pixel 10), or things you are unsure of, you MUST use the tool by outputting EXACTLY <search>your specific query</search> and waiting for results. DO NOT use search for math, coding, or general knowledge you already possess.`;
 
             const apiMessages = [];
             if (sysPrompt) {
@@ -461,14 +468,6 @@
                     apiMessages.push({ role: 'assistant', content: m.content });
                 }
             });
-
-            // If search is toggled on, strongly inject instructions at the very end of the user prompt so Gemma cannot ignore it
-            if (isSearchEnabled && !isAgentContinuation) {
-                const lastMsg = apiMessages[apiMessages.length - 1];
-                if (lastMsg && lastMsg.role === 'user') {
-                    lastMsg.content.push({ type: 'text', text: "\n\n[SYSTEM NOTE: Web Search is ENABLED for this query. If you are unsure about the facts, recent news, or unreleased tech (e.g. Pixel 10), output ONLY `<search>your specific query</search>` and wait for results.]" });
-                }
-            }
 
             // Create temporary AI message wrapper for streaming UI
             const aiMsg = { role: 'assistant', content: '' };
@@ -569,7 +568,7 @@ Extraction:`;
 
                 if (!isNone && extracted.length > 4) {
                     memoryBank.push(extracted);
-                    localStorage.setItem('gemma_memory_bank', JSON.stringify(memoryBank));
+                    if (puter.auth.isSignedIn()) puter.kv.set('gemma_memory_bank', JSON.stringify(memoryBank));
                     
                     if (memoryBank.length >= 5) {
                         const condensePrompt = `Condense these facts about the user into 1-2 concise, factual sentences for long-term memory tracking:\n${memoryBank.join('\n')}`;
@@ -578,7 +577,7 @@ Extraction:`;
                         
                         if (condensed) {
                             memoryBank = [condensed.trim()]; 
-                            localStorage.setItem('gemma_memory_bank', JSON.stringify(memoryBank));
+                            if (puter.auth.isSignedIn()) puter.kv.set('gemma_memory_bank', JSON.stringify(memoryBank));
                         }
                     }
 
@@ -608,7 +607,7 @@ Extraction:`;
 
         function clearMemory() {
             memoryBank = [];
-            localStorage.removeItem('gemma_memory_bank');
+            if (puter.auth.isSignedIn()) puter.kv.del('gemma_memory_bank');
             renderMemory();
         }
 
