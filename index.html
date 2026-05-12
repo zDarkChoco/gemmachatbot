@@ -364,14 +364,15 @@
 
         async function performSearch(query) {
             try {
-                // Phase 1: Scrape DuckDuckGo for Top 3 Results (Title, Snippet, URL)
+                // Phase 1: Scrape DuckDuckGo for Top 5 Results (Title, Snippet, URL)
                 const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://html.duckduckgo.com/html/?q=' + query)}`;
                 const res = await fetch(proxyUrl);
                 const data = await res.json();
                 
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(data.contents, 'text/html');
-                const resultNodes = Array.from(doc.querySelectorAll('.result')).slice(0, 3);
+                // Increased to 5 results for better context if deep fetch fails
+                const resultNodes = Array.from(doc.querySelectorAll('.result')).slice(0, 5);
                 
                 if (resultNodes.length === 0) throw new Error("No results found.");
 
@@ -388,7 +389,7 @@
                     return `- [${title}](${url}): ${snippet}`;
                 }).join('\n');
 
-                // Phase 2: Deep Fetching - Scrape the actual website of the #1 result
+                // Phase 2: Deep Fetching with strict 3-second timeout
                 let deepContext = "";
                 const firstUrlNode = resultNodes[0].querySelector('.result__url');
                 if (firstUrlNode) {
@@ -399,7 +400,12 @@
                     
                     if (firstUrl && firstUrl.startsWith('http')) {
                         try {
-                            const articleRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(firstUrl)}`);
+                            const controller = new AbortController();
+                            const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 sec timeout
+                            
+                            const articleRes = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(firstUrl)}`, { signal: controller.signal });
+                            clearTimeout(timeoutId);
+                            
                             const articleData = await articleRes.json();
                             const articleDoc = parser.parseFromString(articleData.contents, 'text/html');
                             
@@ -414,7 +420,7 @@
                                 deepContext = `\n\n--- Deep Read of Top Result (${firstUrl}) ---\n${paragraphs.substring(0, 2500)}...`;
                             }
                         } catch (e) {
-                            console.warn("Deep read failed, relying on snippets.", e);
+                            console.warn("Deep read failed or timed out, relying on snippets.", e);
                         }
                     }
                 }
