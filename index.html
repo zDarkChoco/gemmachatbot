@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemma AI Chat</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gray: { 850: '#1f2937', 900: '#111827', 950: '#030712' }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Puter.js -->
+    <script src="https://js.puter.com/v2/"></script>
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+        
+        .markdown-body pre { background-color: #1f2937; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; }
+        .markdown-body code { font-family: monospace; background-color: #374151; padding: 0.125rem 0.25rem; border-radius: 0.25rem; }
+        .markdown-body p { margin-bottom: 0.75rem; }
+        .markdown-body ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+        .markdown-body ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 h-screen flex overflow-hidden font-sans">
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="mobileOverlay" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 w-72 bg-gray-950 border-r border-gray-800 flex flex-col transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-30">
+        <div class="p-4 flex items-center justify-between border-b border-gray-800">
+            <h1 class="text-xl font-semibold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Gemma AI</h1>
+            <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
+                <i class="ph ph-x text-2xl"></i>
+            </button>
+        </div>
+
+        <div class="p-3">
+            <button onclick="createNewChat()" class="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                <i class="ph ph-plus text-lg"></i> New Chat
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-1" id="chatList">
+            <!-- Chat history populated here -->
+        </div>
+
+        <div class="p-3 border-t border-gray-800 space-y-2">
+            <button onclick="openModal('customInstructionsModal')" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors">
+                <i class="ph ph-sliders text-lg"></i> Custom Instructions
+            </button>
+            <button onclick="openModal('memoryModal')" class="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:bg-gray-800 rounded-lg transition-colors">
+                <i class="ph ph-brain text-lg"></i> View Memory Bank
+            </button>
+        </div>
+
+        <div class="p-3 border-t border-gray-800" id="authSection">
+            <button onclick="puter.auth.signIn().then(checkAuth)" class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors" id="authBtn">
+                <i class="ph ph-user text-lg"></i> Sign in with Puter
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Chat Area -->
+    <main class="flex-1 flex flex-col h-full relative">
+        <!-- Header -->
+        <header class="h-14 border-b border-gray-800 flex items-center px-4 justify-between bg-gray-900/80 backdrop-blur-sm z-10">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-400 hover:text-white">
+                    <i class="ph ph-list text-2xl"></i>
+                </button>
+                <h2 id="currentChatTitle" class="font-medium text-gray-200">New Chat</h2>
+            </div>
+            <div class="text-xs text-gray-500 font-mono" id="modelIndicator">gemma-4-26b-a4b-it</div>
+        </header>
+
+        <!-- Messages Area -->
+        <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+            <!-- Messages populated here -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-4 md:p-6 bg-gradient-to-t from-gray-900 via-gray-900 to-transparent">
+            <div class="max-w-4xl mx-auto relative">
+                <!-- Attachment Preview Area -->
+                <div id="attachmentPreview" class="hidden mb-2 flex flex-wrap gap-2"></div>
+                
+                <div class="flex items-end gap-2 bg-gray-800 border border-gray-700 rounded-2xl p-2 focus-within:border-gray-500 transition-colors">
+                    
+                    <input type="file" id="fileInput" class="hidden" multiple onchange="handleFileSelect(event)" accept="image/*,.txt,.json,.md,.csv">
+                    <button onclick="document.getElementById('fileInput').click()" class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-gray-700 transition-colors shrink-0" title="Attach File">
+                        <i class="ph ph-paperclip text-xl"></i>
+                    </button>
+                    
+                    <button id="searchToggleBtn" onclick="toggleWebSearch()" class="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-gray-700 transition-colors shrink-0 relative" title="Web Search (Off)">
+                        <i class="ph ph-globe text-xl" id="searchIcon"></i>
+                    </button>
+                    
+                    <textarea id="messageInput" rows="1" class="w-full bg-transparent border-none focus:ring-0 text-gray-100 placeholder-gray-500 resize-none py-2 max-h-32 min-h-[40px] scrollbar-hide" placeholder="Message Gemma..." onkeydown="handleKeydown(event)"></textarea>
+                    
+                    <button id="sendBtn" onclick="sendMessage()" class="p-2 bg-white text-black hover:bg-gray-200 rounded-xl transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="ph ph-paper-plane-right text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <!-- Custom Instructions Modal -->
+    <div id="customInstructionsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg mx-4 p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Custom Instructions</h3>
+                <button onclick="closeModal('customInstructionsModal')" class="text-gray-400 hover:text-white"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <p class="text-sm text-gray-400 mb-4">These instructions will be applied as the system prompt for all new chats.</p>
+            <textarea id="customInstructionsInput" class="w-full h-32 bg-gray-800 border border-gray-700 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 resize-none" placeholder="E.g. Always answer concisely and use bullet points..."></textarea>
+            <div class="mt-4 flex justify-end gap-2">
+                <button onclick="closeModal('customInstructionsModal')" class="px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-800">Cancel</button>
+                <button onclick="saveCustomInstructions()" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memory Modal -->
+    <div id="memoryModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center">
+        <div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-2xl mx-4 p-6 shadow-2xl flex flex-col max-h-[80vh]">
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-lg font-semibold">Memory Bank</h3>
+                    <p class="text-xs text-gray-400">Summarized using Gemma 3 4B, condensed by Gemma 4 26B.</p>
+                </div>
+                <button onclick="closeModal('memoryModal')" class="text-gray-400 hover:text-white"><i class="ph ph-x text-xl"></i></button>
+            </div>
+            <div id="memoryContainer" class="flex-1 overflow-y-auto space-y-3 bg-gray-950 rounded-lg p-4 border border-gray-800">
+                <!-- Memory items populated here -->
+            </div>
+            <div class="mt-4 flex justify-between items-center">
+                <button onclick="clearMemory()" class="px-3 py-1.5 rounded text-sm text-red-400 hover:bg-red-400/10 transition-colors">Clear Memory</button>
+                <button onclick="closeModal('memoryModal')" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Models configuration ---
+        const MAIN_MODEL = 'google/gemma-4-26b-a4b-it';
+        const FAST_MEMORY_MODEL = 'google/gemma-3-4b-it'; 
+        const DEEP_MEMORY_MODEL = 'google/gemma-4-26b-a4b-it';
+
+        // --- State Management ---
+        let chats = JSON.parse(localStorage.getItem('gemma_chats')) || [];
+        let currentChatId = null;
+        let customInstructions = localStorage.getItem('gemma_custom_instructions') || '';
+        let memoryBank = JSON.parse(localStorage.getItem('gemma_memory_bank')) || [];
+        let isSearchEnabled = false;
+        let attachments = []; 
+        let isProcessing = false;
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('customInstructionsInput').value = customInstructions;
+            checkAuth();
+            
+            if (chats.length === 0) {
+                createNewChat();
+            } else {
+                currentChatId = chats[0].id;
+                renderChatList();
+                renderMessages();
+            }
+
+            // Adjust textarea height automatically
+            const tx = document.getElementById('messageInput');
+            tx.addEventListener("input", function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + "px";
+            });
+        });
+
+        // --- Auth Management ---
+        async function checkAuth() {
+            const isSignedIn = puter.auth.isSignedIn();
+            const authBtn = document.getElementById('authBtn');
+            const messageInput = document.getElementById('messageInput');
+            const sendBtn = document.getElementById('sendBtn');
+
+            if (isSignedIn) {
+                const user = await puter.auth.getUser();
+                authBtn.innerHTML = `<i class="ph ph-sign-out text-lg"></i> Sign out (${user.username})`;
+                authBtn.onclick = async () => { await puter.auth.signOut(); checkAuth(); };
+                messageInput.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.placeholder = "Message Gemma...";
+            } else {
+                authBtn.innerHTML = `<i class="ph ph-sign-in text-lg"></i> Sign in with Puter`;
+                authBtn.onclick = async () => { await puter.auth.signIn(); checkAuth(); };
+                messageInput.disabled = true;
+                sendBtn.disabled = true;
+                messageInput.placeholder = "Please sign in to chat...";
+            }
+        }
+
+        // --- UI & Interaction ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        function openModal(id) { document.getElementById(id).classList.remove('hidden'); if(id === 'memoryModal') renderMemory(); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function toggleWebSearch() {
+            isSearchEnabled = !isSearchEnabled;
+            const btn = document.getElementById('searchToggleBtn');
+            if (isSearchEnabled) {
+                btn.classList.add('text-blue-400', 'bg-blue-900/30');
+                btn.classList.remove('text-gray-400');
+                btn.title = "Web Search (On)";
+            } else {
+                btn.classList.remove('text-blue-400', 'bg-blue-900/30');
+                btn.classList.add('text-gray-400');
+                btn.title = "Web Search (Off)";
+            }
+        }
+
+        function saveCustomInstructions() {
+            customInstructions = document.getElementById('customInstructionsInput').value;
+            localStorage.setItem('gemma_custom_instructions', customInstructions);
+            closeModal('customInstructionsModal');
+        }
+
+        function handleKeydown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        // --- Chat Management ---
+        function createNewChat() {
+            const newChat = {
+                id: Date.now().toString(),
+                title: 'New Chat',
+                messages: [],
+                timestamp: Date.now()
+            };
+            chats.unshift(newChat);
+            currentChatId = newChat.id;
+            saveChats();
+            renderChatList();
+            renderMessages();
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+
+        function loadChat(id) {
+            if(isProcessing) return;
+            currentChatId = id;
+            renderChatList();
+            renderMessages();
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+
+        function deleteChat(id, event) {
+            event.stopPropagation();
+            if(isProcessing) return;
+            chats = chats.filter(c => c.id !== id);
+            if (currentChatId === id) {
+                currentChatId = chats.length > 0 ? chats[0].id : null;
+            }
+            saveChats();
+            if (!currentChatId) createNewChat();
+            else { renderChatList(); renderMessages(); }
+        }
+
+        function saveChats() {
+            localStorage.setItem('gemma_chats', JSON.stringify(chats));
+        }
+
+        function getActiveChat() {
+            return chats.find(c => c.id === currentChatId);
+        }
+
+        // --- File & Tool Handling ---
+        async function handleFileSelect(e) {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        attachments.push({ type: 'image', data: ev.target.result, name: file.name });
+                        renderAttachments();
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    const text = await file.text();
+                    attachments.push({ type: 'text', data: text, name: file.name });
+                    renderAttachments();
+                }
+            }
+            e.target.value = '';
+        }
+
+        function removeAttachment(index) {
+            attachments.splice(index, 1);
+            renderAttachments();
+        }
+
+        function renderAttachments() {
+            const container = document.getElementById('attachmentPreview');
+            container.innerHTML = '';
+            if (attachments.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+            container.classList.remove('hidden');
+            
+            attachments.forEach((att, idx) => {
+                const el = document.createElement('div');
+                el.className = 'relative flex items-center gap-2 bg-gray-700 rounded p-2 pr-8 text-sm max-w-[200px] truncate border border-gray-600';
+                
+                if (att.type === 'image') {
+                    el.innerHTML = `<img src="${att.data}" class="w-6 h-6 object-cover rounded"> <span class="truncate">${att.name}</span>`;
+                } else {
+                    el.innerHTML = `<i class="ph ph-file-text text-xl"></i> <span class="truncate">${att.name}</span>`;
+                }
+                
+                const btn = document.createElement('button');
+                btn.className = 'absolute right-1 top-1.5 p-1 text-gray-400 hover:text-white rounded-full bg-gray-800';
+                btn.innerHTML = '<i class="ph ph-x text-xs"></i>';
+                btn.onclick = () => removeAttachment(idx);
+                
+                el.appendChild(btn);
+                container.appendChild(el);
+            });
+        }
+
+        async function performSearch(query) {
+            try {
+                // Primary: Scrape real web results via DuckDuckGo and AllOrigins proxy for modern info
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent('https://html.duckduckgo.com/html/?q=' + query)}`;
+                const res = await fetch(proxyUrl);
+                const data = await res.json();
+                
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data.contents, 'text/html');
+                const snippets = Array.from(doc.querySelectorAll('.result__snippet')).slice(0, 4).map(el => "- " + el.textContent.trim());
+                
+                if (snippets.length > 0) {
+                    return `Live Web Search Results for "${query}":\n${snippets.join('\n')}`;
+                }
+            } catch (e) {
+                console.warn("Live web search failed, falling back to Wikipedia", e);
+            }
+
+            try {
+                // Fallback: Wikipedia API
+                const res = await fetch(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`);
+                const data = await res.json();
+                if (data.query && data.query.search.length > 0) {
+                    const snippets = data.query.search.slice(0, 3).map(s => `- ${s.title}: ${s.snippet.replace(/<[^>]*>?/gm, '')}`).join('\n\n');
+                    return `Wikipedia Search Results for "${query}":\n${snippets}`;
+                }
+                return `Search Results for "${query}": No results found on Web or Wikipedia.`;
+            } catch(e) {
+                return `Search Results for "${query}": Search completely failed.`;
+            }
+        }
+
+        // --- Core Logic ---
+        async function sendMessage(isAgentContinuation = false, searchResultText = null) {
+            if (!isAgentContinuation && isProcessing) return;
+            
+            const inputEl = document.getElementById('messageInput');
+            let text = '';
+
+            if (!isAgentContinuation) {
+                text = inputEl.value.trim();
+                if (!text && attachments.length === 0) return;
+            }
+
+            const chat = getActiveChat();
+            if (!chat) return;
+
+            if (!isAgentContinuation) {
+                if (chat.messages.length === 0 && text) {
+                    chat.title = text.length > 30 ? text.substring(0, 30) + '...' : text;
+                    renderChatList();
+                }
+
+                const userMsg = { role: 'user', content: text, files: [...attachments] };
+                chat.messages.push(userMsg);
+                
+                inputEl.value = '';
+                inputEl.style.height = 'auto';
+                attachments = [];
+                renderAttachments();
+                saveChats();
+                
+                isProcessing = true;
+                document.getElementById('sendBtn').disabled = true;
+            } else if (searchResultText) {
+                // Agent loop: push the search results quietly as a system/user message
+                chat.messages.push({ role: 'user', content: searchResultText, isSearchResult: true });
+                saveChats();
+            }
+
+            renderMessages();
+
+            // System Prompt construction
+            let sysPrompt = customInstructions;
+            if (memoryBank.length > 0) {
+                sysPrompt += `\n\nUser Context/Memory:\n- ${memoryBank.join('\n- ')}`;
+            }
+            if (isSearchEnabled) {
+                sysPrompt += `\n\nTOOL INSTRUCTION: You have a Web Search tool. You must use it to answer questions about recent events or unreleased tech. To use it, output exactly <search>query</search>.`;
+            }
+
+            const apiMessages = [];
+            if (sysPrompt) {
+                apiMessages.push({ role: 'system', content: sysPrompt });
+            }
+
+            chat.messages.forEach(m => {
+                if (m.role === 'user') {
+                    const contentArr = [];
+                    if (m.content) contentArr.push({ type: 'text', text: m.content });
+                    
+                    if (m.files && m.files.length > 0) {
+                        m.files.forEach(f => {
+                            if (f.type === 'image') {
+                                contentArr.push({ type: 'image_url', image_url: { url: f.data } });
+                            } else {
+                                contentArr.push({ type: 'text', text: `\n[Attached File: ${f.name}]\n${f.data}\n` });
+                            }
+                        });
+                    }
+                    apiMessages.push({ role: 'user', content: contentArr });
+                } else {
+                    apiMessages.push({ role: 'assistant', content: m.content });
+                }
+            });
+
+            // If search is toggled on, strongly inject instructions at the very end of the user prompt so Gemma cannot ignore it
+            if (isSearchEnabled && !isAgentContinuation) {
+                const lastMsg = apiMessages[apiMessages.length - 1];
+                if (lastMsg && lastMsg.role === 'user') {
+                    lastMsg.content.push({ type: 'text', text: "\n\n[SYSTEM NOTE: Web Search is ENABLED for this query. If you are unsure about the facts, recent news, or unreleased tech (e.g. Pixel 10), output ONLY `<search>your specific query</search>` and wait for results.]" });
+                }
+            }
+
+            // Create temporary AI message wrapper for streaming UI
+            const aiMsg = { role: 'assistant', content: '' };
+            chat.messages.push(aiMsg);
+            renderMessages(); 
+            
+            const messageElements = document.querySelectorAll('.message-bubble');
+            const currentBubble = messageElements[messageElements.length - 1];
+            const contentDiv = currentBubble.querySelector('.ai-content');
+
+            let searchMatch = null;
+
+            try {
+                const response = await puter.ai.chat(apiMessages, { model: MAIN_MODEL, stream: true });
+                let fullText = '';
+
+                for await (const part of response) {
+                    if (part?.text) {
+                        fullText += part.text;
+                        
+                        // Obfuscate the search command visually for the user
+                        if (fullText.includes('<search>')) {
+                            contentDiv.innerHTML = `<span class="text-blue-400 flex items-center gap-2"><i class="ph ph-magnifying-glass animate-pulse"></i> Searching the live web...</span>`;
+                        } else {
+                            contentDiv.innerHTML = marked.parse(fullText);
+                        }
+                    }
+                    scrollToBottom();
+                }
+
+                // Check if the AI used the search tool
+                searchMatch = fullText.match(/<search>(.*?)<\/search>/i);
+
+                if (searchMatch) {
+                    const query = searchMatch[1].trim();
+                    aiMsg.content = `*Used Web Search for: "${query}"*`; // Leave a breadcrumb in the chat log
+                    saveChats();
+                    
+                    const searchResults = await performSearch(query);
+                    
+                    // Trigger the agent loop recursively to pass results back to Gemma
+                    await sendMessage(true, searchResults);
+                    return; 
+                } else {
+                    aiMsg.content = fullText;
+                    saveChats();
+
+                    // Memory Process: get the last actual user input, skip the search result injections
+                    if (!isAgentContinuation) {
+                        const originalUserMsg = chat.messages.slice().reverse().find(m => m.role === 'user' && !m.isSearchResult);
+                        if (originalUserMsg && originalUserMsg.content) {
+                            processMemory(originalUserMsg.content, aiMsg.content);
+                        }
+                    }
+                }
+
+            } catch (error) {
+                console.error(error);
+                if (contentDiv) {
+                    contentDiv.innerHTML = `<span class="text-red-400">Error: Unable to reach Gemma. Check console for details.</span>`;
+                }
+                chat.messages.pop();
+            } finally {
+                // Only unlock UI if we aren't about to loop for a search
+                if (!searchMatch) {
+                    isProcessing = false;
+                    document.getElementById('sendBtn').disabled = false;
+                    const el = document.getElementById('messageInput');
+                    if(el) el.focus();
+                }
+            }
+        }
+
+        // --- Memory System ---
+        async function processMemory(userText, aiText) {
+            if (!userText || userText.length < 2) return; 
+            
+            try {
+                const prompt = `You are a strict data extraction tool. Analyze the user message and extract any personal facts (name, age, location, preferences, rules, etc.) as a single concise sentence. If there are NO personal facts, output EXACTLY the word "NONE".
+
+Example 1:
+User message: "My name is Kozo and I like apples."
+Extraction: The user's name is Kozo and they like apples.
+
+Example 2:
+User message: "What is the capital of France?"
+Extraction: NONE
+
+Example 3:
+User message: "${userText}"
+Extraction:`;
+                
+                const extRes = await puter.ai.chat(prompt, { model: FAST_MEMORY_MODEL });
+                let extracted = typeof extRes === 'string' ? extRes : (extRes?.text || extRes?.message?.content || "NONE");
+                
+                extracted = extracted.replace(/^["*`]|["*`]$/g, '').trim();
+                const isNone = extracted.toUpperCase() === "NONE" || extracted.toUpperCase().includes("NONE");
+
+                if (!isNone && extracted.length > 4) {
+                    memoryBank.push(extracted);
+                    localStorage.setItem('gemma_memory_bank', JSON.stringify(memoryBank));
+                    
+                    if (memoryBank.length >= 5) {
+                        const condensePrompt = `Condense these facts about the user into 1-2 concise, factual sentences for long-term memory tracking:\n${memoryBank.join('\n')}`;
+                        const condRes = await puter.ai.chat(condensePrompt, { model: DEEP_MEMORY_MODEL });
+                        let condensed = typeof condRes === 'string' ? condRes : (condRes?.text || condRes?.message?.content);
+                        
+                        if (condensed) {
+                            memoryBank = [condensed.trim()]; 
+                            localStorage.setItem('gemma_memory_bank', JSON.stringify(memoryBank));
+                        }
+                    }
+
+                    if (!document.getElementById('memoryModal').classList.contains('hidden')) {
+                        renderMemory();
+                    }
+                }
+            } catch(e) {
+                console.error("Memory extraction failed:", e);
+            }
+        }
+
+        function renderMemory() {
+            const container = document.getElementById('memoryContainer');
+            container.innerHTML = '';
+            if (memoryBank.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No memories stored yet.</p>';
+                return;
+            }
+            memoryBank.forEach(m => {
+                const el = document.createElement('div');
+                el.className = 'p-3 bg-gray-900 border border-gray-800 rounded-lg text-sm text-gray-300';
+                el.innerText = m;
+                container.appendChild(el);
+            });
+        }
+
+        function clearMemory() {
+            memoryBank = [];
+            localStorage.removeItem('gemma_memory_bank');
+            renderMemory();
+        }
+
+        // --- Rendering ---
+        function renderChatList() {
+            const container = document.getElementById('chatList');
+            container.innerHTML = '';
+            chats.forEach(chat => {
+                const isActive = chat.id === currentChatId;
+                const el = document.createElement('div');
+                el.className = `group flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${isActive ? 'bg-gray-800 text-white' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'}`;
+                el.onclick = () => loadChat(chat.id);
+                
+                const title = document.createElement('span');
+                title.className = 'truncate text-sm flex-1';
+                title.innerText = chat.title;
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = `p-1 hover:text-red-400 rounded transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`;
+                delBtn.innerHTML = '<i class="ph ph-trash text-base"></i>';
+                delBtn.onclick = (e) => deleteChat(chat.id, e);
+
+                el.appendChild(title);
+                el.appendChild(delBtn);
+                container.appendChild(el);
+            });
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('messagesContainer');
+            const chat = getActiveChat();
+            
+            container.innerHTML = '';
+            
+            if (!chat || chat.messages.length === 0) {
+                container.innerHTML = `
+                    <div class="h-10 text-center text-sm text-gray-500 mt-10" id="emptyState">
+                        Start a conversation with Gemma 4.
+                    </div>
+                `;
+                document.getElementById('currentChatTitle').innerText = 'New Chat';
+                return;
+            }
+            
+            document.getElementById('currentChatTitle').innerText = chat.title;
+
+            chat.messages.forEach(msg => {
+                // If it's the raw search result data injected back to Gemma, render it as a tiny discrete badge
+                if (msg.isSearchResult) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'flex justify-center my-2';
+                    wrapper.innerHTML = `<div class="bg-gray-800/50 border border-gray-700 text-gray-400 text-[10px] uppercase font-bold py-1 px-3 rounded flex items-center gap-2"><i class="ph ph-check-circle"></i> AI ingested web results</div>`;
+                    container.appendChild(wrapper);
+                    return;
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = `flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} message-bubble`;
+                
+                const bubble = document.createElement('div');
+                bubble.className = `max-w-[85%] md:max-w-[75%] rounded-2xl p-4 ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-gray-800 text-gray-100 border border-gray-700 rounded-bl-none'}`;
+                
+                if (msg.role === 'user' && msg.files && msg.files.length > 0) {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'flex flex-wrap gap-2 mb-2';
+                    msg.files.forEach(f => {
+                        if (f.type === 'image') {
+                            imgContainer.innerHTML += `<img src="${f.data}" class="w-32 h-32 object-cover rounded-lg border border-white/20">`;
+                        } else {
+                            imgContainer.innerHTML += `<div class="flex items-center gap-2 bg-black/20 p-2 rounded-lg text-sm"><i class="ph ph-file-text"></i> ${f.name}</div>`;
+                        }
+                    });
+                    bubble.appendChild(imgContainer);
+                }
+
+                if (msg.role === 'assistant') {
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'markdown-body ai-content';
+                    contentDiv.innerHTML = marked.parse(msg.content);
+                    bubble.appendChild(contentDiv);
+                } else {
+                    const textDiv = document.createElement('div');
+                    textDiv.innerText = msg.content;
+                    textDiv.className = 'whitespace-pre-wrap';
+                    bubble.appendChild(textDiv);
+                }
+
+                wrapper.appendChild(bubble);
+                container.appendChild(wrapper);
+            });
+            scrollToBottom();
+        }
+
+        function scrollToBottom() {
+            const container = document.getElementById('messagesContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+    </script>
+</body>
+</html>
